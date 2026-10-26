@@ -1,0 +1,61 @@
+name: CMO Command — Autonomous Run
+
+# หยุด schedule อัตโนมัติแล้ว — รันได้แบบสั่งมือ (workflow_dispatch) หรือเมื่อ push โค้ด
+# หากต้องการเปิดรันรายสัปดาห์อีกครั้ง ให้ใส่บล็อก schedule กลับมา:
+#   schedule:
+#     - cron: "0 1 * * 1"   # ทุกวันจันทร์ 08:00 เวลาไทย (01:00 UTC)
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/cmo-command-system-q26rcb]
+    paths:
+      - "data/raw/**"
+      - "src/**"
+      - "config/**"
+
+permissions:
+  contents: write
+
+jobs:
+  run-cmo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Run CMO analysis
+        env:
+          # ตั้ง secret GEMINI_API_KEY ใน repo settings เพื่อเปิดใช้กลยุทธ์ Gemini
+          # ถ้าไม่ตั้ง ระบบจะใช้ fallback engine (ไม่ล้ม CI)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m src.main
+
+      - name: Commit report & command queue
+        run: |
+          git config user.name "cmo-command-bot"
+          git config user.email "actions@github.com"
+          git add output/ data/processed/ || true
+          if git diff --staged --quiet; then
+            echo "ไม่มีผลลัพธ์ใหม่ให้ commit"
+          else
+            git commit -m "chore(cmo): autonomous run $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmo-latest-report
+          path: |
+            output/reports/latest.md
+            output/commands/latest.json
