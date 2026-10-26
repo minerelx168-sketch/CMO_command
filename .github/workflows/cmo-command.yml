@@ -1,9 +1,10 @@
 name: CMO Command — Autonomous Run
 
-# รันอัตโนมัติทุกวันจันทร์ 08:00 (เวลาไทย = 01:00 UTC) + สั่งรันมือได้
+# หยุด schedule อัตโนมัติแล้ว — รันได้แบบสั่งมือ (workflow_dispatch) หรือเมื่อ push โค้ด
+# หากต้องการเปิดรันรายสัปดาห์อีกครั้ง ให้ใส่บล็อก schedule กลับมา:
+#   schedule:
+#     - cron: "0 1 * * 1"   # ทุกวันจันทร์ 08:00 เวลาไทย (01:00 UTC)
 on:
-  schedule:
-    - cron: "0 1 * * 1"
   workflow_dispatch:
   push:
     branches: [claude/cmo-command-system-q26rcb]
